@@ -60,6 +60,7 @@ def run(cmd: str, cwd: Path, timeout: int = 1800) -> None:
         shell=True,
         executable="/bin/bash",
         cwd=cwd,
+        timeout=timeout,
     )
     if result.returncode != 0:
         die(f"Command failed (exit {result.returncode}): {cmd}")
