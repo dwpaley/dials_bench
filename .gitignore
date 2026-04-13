@@ -1,1 +1,8 @@
 .tmp/
+get_test_data.com
+*.expt
+*.refl
+dials/
+data/
+dials.*.log
+dials.*.phil
