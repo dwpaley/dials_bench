@@ -19,10 +19,17 @@ from pathlib import Path
 WORK_DIR = Path(__file__).parent.resolve()
 DATA_DIR = WORK_DIR / "data"
 DIALS_DIR = WORK_DIR / "dials"
-DIALS_ENV = DIALS_DIR / "dials"
+DIALS_ENV = DIALS_DIR / "dials"  # activation script inside dials/
 
 TEST_DATA_SCRIPT = WORK_DIR / "get_test_data.com"
-BOOTSTRAP_PY = WORK_DIR / "bootstrap.py"
+BOOTSTRAP_PY = DIALS_DIR / "bootstrap.py"  # download into dials/
+
+# Build artifacts from get_test_data.com to clean up
+TEST_DATA_ARTIFACTS = [
+    "noisify", "noisify.c", "cbf2int", "cbf2int.c", "int2cbf", "int2cbf.c",
+    "float_add", "float_add.c", "job.com", "log_timestamp.tcl",
+    "noiseless_cbfs.tar.bz2", "headerstub.txt",
+]
 
 TEST_DATA_URL = "https://bl831.als.lbl.gov/~jamesh/benchmarks/testdata/get_test_data.com"
 BOOTSTRAP_URL = "https://raw.githubusercontent.com/dials/dials/main/installer/bootstrap.py"
@@ -132,6 +139,19 @@ def setup_data() -> None:
 
     log(f"Data verified: {len(core_large)} core images, {len(test_images)} test images.")
 
+    # Clean up build artifacts from get_test_data.com
+    log("Cleaning up test data build artifacts...")
+    for artifact in TEST_DATA_ARTIFACTS:
+        path = WORK_DIR / artifact
+        if path.exists():
+            path.unlink()
+    # Also clean up temp directories if they exist
+    for dirname in ["float", "noiseless", "logs"]:
+        dirpath = WORK_DIR / dirname
+        if dirpath.exists() and dirpath.is_dir():
+            import shutil
+            shutil.rmtree(dirpath)
+
 
 # ---------------------------------------------------------------------------
 # Task 2: DIALS installation
@@ -151,15 +171,18 @@ def setup_dials() -> None:
         else:
             log("DIALS env exists but dials.version did not return expected output. Reinstalling...")
 
-    # Download bootstrap.py
+    # Create dials directory
+    DIALS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Download bootstrap.py into dials/
     if not BOOTSTRAP_PY.exists():
         download(BOOTSTRAP_URL, BOOTSTRAP_PY)
     else:
         log(f"{BOOTSTRAP_PY} already exists, skipping download.")
 
-    # Run bootstrap (builds DIALS + libtbx)
+    # Run bootstrap from within dials/ (builds DIALS + libtbx)
     log("Running bootstrap.py --libtbx (this may take 30-60 minutes)...")
-    run(f"python3 {BOOTSTRAP_PY} --libtbx", cwd=WORK_DIR, timeout=7200)
+    run(f"python3 {BOOTSTRAP_PY} --libtbx", cwd=DIALS_DIR, timeout=7200)
 
     # Verify
     if not DIALS_ENV.exists():

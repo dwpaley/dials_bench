@@ -173,7 +173,7 @@ def rebuild_dials():
     """Rebuild DIALS using bootstrap.py (sources DIALS env first for Python)."""
     eprint("  [build] Rebuilding DIALS (this may take several minutes)...")
     cmd = f"source {DIALS_ENV} && python bootstrap.py --libtbx build"
-    run_cmd(cmd, cwd=WORK_DIR, timeout=1800, capture=False)
+    run_cmd(cmd, cwd=DIALS_DIR, timeout=1800, capture=False)
     eprint("  [build] Done.")
 
 
