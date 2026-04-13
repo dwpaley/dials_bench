@@ -22,7 +22,7 @@ from pathlib import Path
 # Constants
 # ---------------------------------------------------------------------------
 
-WORK_DIR = Path.cwd()
+WORK_DIR = Path(__file__).parent.resolve()
 DIALS_DIR = WORK_DIR / "dials"
 DIALS_ENV = DIALS_DIR / "dials"          # source this to activate DIALS
 MODULES_DIR = DIALS_DIR / "modules"
@@ -488,12 +488,11 @@ def main():
     timestamp = datetime.datetime.now().isoformat(timespec="seconds")
     ts_tag = str(int(time.time()))
 
+    configuration = {repo: " ".join(branches) for repo, branches in repo_specs.items()}
+    configuration["nproc"] = nproc
     output = {
         "timestamp": timestamp,
-        "configuration": {
-            repo: " ".join(branches) for repo, branches in repo_specs.items()
-        },
-        "nproc": nproc,
+        "configuration": configuration,
     }
 
     if not is_case_b:
@@ -509,14 +508,23 @@ def main():
         baseline = run_full_benchmark(nproc)
 
         # Feature: checkout requested branches
-        apply_branches_case_a(repo_specs)
-        rebuild_dials()
-        eprint("[bench] Running feature benchmarks...")
-        feature = run_full_benchmark(nproc)
+        try:
+            apply_branches_case_a(repo_specs)
+            rebuild_dials()
+            eprint("[bench] Running feature benchmarks...")
+            feature = run_full_benchmark(nproc)
 
-        output["baseline"] = baseline
-        output["feature"] = feature
-        output["comparison"] = compute_comparison(baseline, feature)
+            output["baseline"] = baseline
+            output["feature"] = feature
+            output["comparison"] = compute_comparison(baseline, feature)
+        finally:
+            eprint("[cleanup] Restoring repos to main...")
+            for repo_name in repo_specs:
+                repo_path = MODULES_DIR / repo_name
+                try:
+                    ensure_main(repo_path)
+                except SystemExit as exc:
+                    eprint(f"WARNING: cleanup failed for {repo_name}: {exc}")
 
     else:
         # ------------------------------------------------------------------
@@ -543,8 +551,8 @@ def main():
             eprint("[bench] Running post benchmarks (deps + feature)...")
             post = run_full_benchmark(nproc)
 
-            output["pre"] = pre
-            output["post"] = post
+            output["baseline"] = pre
+            output["feature"] = post
             output["comparison"] = compute_comparison(pre, post)
 
         finally:
