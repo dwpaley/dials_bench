@@ -185,7 +185,7 @@ def precompile_modules():
     eprint("[warmup] precompiling .pyc files...")
     for module in ("dials", "cctbx_project", "dxtbx"):
         module_path = MODULES_DIR / module
-        cmd = f"source {DIALS_ENV} && python -m compileall -q {module_path}"
+        cmd = f"source {DIALS_ENV} && python -m compileall -q {module_path} || true"
         run_cmd(cmd, cwd=WORK_DIR, timeout=300, capture=False)
 
 
