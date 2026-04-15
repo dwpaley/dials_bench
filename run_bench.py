@@ -109,11 +109,11 @@ def check_prerequisites():
 # ---------------------------------------------------------------------------
 
 
-def ensure_main(repo_path):
+def ensure_main(repo_path, main_name='main'):
     """Checkout main branch and pull latest."""
     repo_path = Path(repo_path)
     eprint(f"  [git] {repo_path.name}: checkout main")
-    git(repo_path, "checkout", "main", capture=False)
+    git(repo_path, "checkout", main_name, capture=False)
     git(repo_path, "pull", "--ff-only", capture=False)
 
 
@@ -360,7 +360,8 @@ def setup_repos_baseline(repo_specs):
     eprint("[setup] Checking repos onto main...")
     for repo_name in repo_specs:
         repo_path = MODULES_DIR / repo_name
-        ensure_main(repo_path)
+        main_name = 'master' if repo_name == 'cctbx_project' else 'main'
+        ensure_main(repo_path, main_name)
 
 
 def apply_branches_case_a(repo_specs):
@@ -521,8 +522,9 @@ def main():
             eprint("[cleanup] Restoring repos to main...")
             for repo_name in repo_specs:
                 repo_path = MODULES_DIR / repo_name
+                main_name = 'master' if repo_name == 'cctbx_project' else 'main'
                 try:
-                    ensure_main(repo_path)
+                    ensure_main(repo_path, main_name)
                 except SystemExit as exc:
                     eprint(f"WARNING: cleanup failed for {repo_name}: {exc}")
 
