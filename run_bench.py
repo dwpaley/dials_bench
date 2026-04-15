@@ -177,6 +177,34 @@ def rebuild_dials():
     eprint("  [build] Done.")
 
 
+def precompile_modules():
+    """
+    Pre-compile all .py files in the three DIALS module trees to .pyc so that
+    the first timed subprocess does not pay the compilation cost.
+    """
+    eprint("[warmup] precompiling .pyc files...")
+    for module in ("dials", "cctbx_project", "dxtbx"):
+        module_path = MODULES_DIR / module
+        cmd = f"source {DIALS_ENV} && python -m compileall -q {module_path}"
+        run_cmd(cmd, cwd=WORK_DIR, timeout=300, capture=False)
+
+
+def warm_page_cache():
+    """
+    Read all .cbf files under data/ into the OS page cache so that the first
+    timed subprocess does not pay cold-read I/O costs.  Logs a warning if no
+    .cbf files are found but does not abort.
+    """
+    eprint("[warmup] warming page cache...")
+    cbf_files = list(WORK_DIR.glob("data/*.cbf"))
+    if not cbf_files:
+        eprint("WARNING: [warmup] no .cbf files found under data/ — skipping page-cache warm")
+        return
+    # Build a quoted list of paths and cat them to /dev/null
+    quoted = " ".join(f'"{p}"' for p in cbf_files)
+    run_cmd(f"cat {quoted} > /dev/null", cwd=WORK_DIR, timeout=600, capture=False)
+
+
 # ---------------------------------------------------------------------------
 # Benchmark execution
 # ---------------------------------------------------------------------------
@@ -505,6 +533,8 @@ def main():
         # Baseline: all repos on main
         setup_repos_baseline(repo_specs)
         rebuild_dials()
+        precompile_modules()
+        warm_page_cache()
         eprint("[bench] Running baseline benchmarks (main)...")
         baseline = run_full_benchmark(nproc)
 
@@ -512,6 +542,8 @@ def main():
         try:
             apply_branches_case_a(repo_specs)
             rebuild_dials()
+            precompile_modules()
+            warm_page_cache()
             eprint("[bench] Running feature benchmarks...")
             feature = run_full_benchmark(nproc)
 
@@ -544,12 +576,16 @@ def main():
             setup_repos_baseline(repo_specs)
             apply_branches_case_b_pre(repo_specs, temp_branches)
             rebuild_dials()
+            precompile_modules()
+            warm_page_cache()
             eprint("[bench] Running pre benchmarks (deps only)...")
             pre = run_full_benchmark(nproc)
 
             # Post: + final (feature) branch
             apply_branches_case_b_post(repo_specs)
             rebuild_dials()
+            precompile_modules()
+            warm_page_cache()
             eprint("[bench] Running post benchmarks (deps + feature)...")
             post = run_full_benchmark(nproc)
 
