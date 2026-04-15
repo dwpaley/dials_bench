@@ -359,9 +359,41 @@ def compute_comparison(baseline, feature):
     return comparison
 
 
-def print_human_summary(comparison):
+def print_human_summary(output):
     """Print a human-readable timing comparison table to stderr."""
+    # Print configuration header
+    eprint("\nConfiguration:")
+    config = output["configuration"]
+
+    # Determine main branch name for each repo
+    main_names = {
+        "cctbx_project": "master",
+        "dials": "main",
+        "dxtbx": "main",
+    }
+
+    # Print repo configurations
+    for repo_name in REPO_NAMES:
+        if repo_name in config and repo_name != "nproc":
+            branch_spec = config[repo_name]
+            branches = branch_spec.split()
+            main_name = main_names.get(repo_name, "main")
+
+            if len(branches) == 1:
+                # Case A: single branch
+                eprint(f"  {repo_name}: {main_name} → {branches[0]}")
+            else:
+                # Case B: multi-branch
+                baseline_branches = " ".join(branches[:-1])
+                feature_branches = branch_spec
+                eprint(f"  {repo_name}: {baseline_branches} → {feature_branches}")
+
+    # Print nproc
+    if "nproc" in config:
+        eprint(f"  nproc: {config['nproc']}")
+
     eprint("\n=== Benchmark Results ===")
+    comparison = output["comparison"]
     for test_key in ("single_core", "multi_core"):
         label = "Single-core (360 img)" if test_key == "single_core" else "Multi-core (1800 img)"
         eprint(f"\n{label}:")
@@ -597,7 +629,7 @@ def main():
             cleanup_all_temp_branches(repo_specs, temp_branches)
 
     # Print human summary
-    print_human_summary(output["comparison"])
+    print_human_summary(output)
 
     # JSON output to stdout
     print(json.dumps(output, indent=2))
